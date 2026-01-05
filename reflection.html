@@ -2,72 +2,100 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>反射線</title>
+<title>モンスト反射線</title>
 <style>
   body {
     margin: 0;
-    background: #000;
-    color: #fff;
-    font-family: sans-serif;
+    background: black;
+    overflow: hidden;
   }
   canvas {
     display: block;
-    margin: 0 auto;
+    margin: auto;
     background: #111;
-  }
-  #ui {
-    text-align: center;
-    padding: 10px;
   }
 </style>
 </head>
 <body>
 
-<div id="ui">
-  <input type="file" id="fileInput">
-</div>
 <canvas id="canvas" width="360" height="600"></canvas>
 
 <script>
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 
-let img = new Image();
+let startX = 180;
+let startY = 300;
+let angle = Math.PI / 4; // 発射角
+const speed = 6;
+const maxReflections = 30; // ←①反射数
 
-document.getElementById("fileInput").addEventListener("change", e => {
-  const file = e.target.files[0];
-  if (!file) return;
-  img.src = URL.createObjectURL(file);
+// ブロック（④）
+const blocks = [
+  {x:120, y:200, w:120, h:20},
+  {x:80, y:400, w:200, h:20}
+];
+
+// タップで発射位置変更（②）
+canvas.addEventListener("click", e => {
+  const rect = canvas.getBoundingClientRect();
+  startX = e.clientX - rect.left;
+  startY = e.clientY - rect.top;
+  angle = Math.random() * Math.PI * 2;
+  draw();
 });
 
-img.onload = () => {
-  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-  drawReflection();
-};
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-function drawReflection() {
+  // ブロック描画
+  ctx.fillStyle = "#444";
+  blocks.forEach(b => ctx.fillRect(b.x, b.y, b.w, b.h));
+
+  let x = startX;
+  let y = startY;
+  let dx = Math.cos(angle) * speed;
+  let dy = Math.sin(angle) * speed;
+
   ctx.strokeStyle = "red";
   ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(x, y);
 
-  let x = 50, y = 50;
-  let dx = 3, dy = 4;
+  for (let i = 0; i < maxReflections; i++) {
+    let nx = x + dx * 30;
+    let ny = y + dy * 30;
 
-  for (let i = 0; i < 10; i++) {
-    let nx = x + dx * 200;
-    let ny = y + dy * 200;
+    // 壁反射（③ 実際のモンストと同じ：入射角＝反射角）
+    if (nx <= 0 || nx >= canvas.width) dx *= -1;
+    if (ny <= 0 || ny >= canvas.height) dy *= -1;
 
-    if (nx < 0 || nx > canvas.width) dx *= -1;
-    if (ny < 0 || ny > canvas.height) dy *= -1;
+    // ブロック反射（④）
+    blocks.forEach(b => {
+      if (
+        nx > b.x && nx < b.x + b.w &&
+        ny > b.y && ny < b.y + b.h
+      ) {
+        if (Math.abs(dx) > Math.abs(dy)) dx *= -1;
+        else dy *= -1;
+      }
+    });
 
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-    ctx.lineTo(nx, ny);
-    ctx.stroke();
-
-    x = nx;
-    y = ny;
+    x += dx * 30;
+    y += dy * 30;
+    ctx.lineTo(x, y);
   }
+
+  ctx.stroke();
+
+  // 発射点
+  ctx.fillStyle = "white";
+  ctx.beginPath();
+  ctx.arc(startX, startY, 4, 0, Math.PI * 2);
+  ctx.fill();
 }
+
+draw();
 </script>
 
 </body>
