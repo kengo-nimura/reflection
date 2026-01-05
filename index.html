@@ -1,51 +1,102 @@
-// --- 予測線（ガイド）を描画する関数 ---
-function drawGuide() {
-    if (!isDragging) return;
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>モンスト反射シミュレータ</title>
+    <style>
+        body { margin: 0; overflow: hidden; background: #000; font-family: sans-serif; }
+        canvas { display: block; z-index: 1; position: absolute; top: 0; left: 0; }
+        #ui { position: absolute; bottom: 10px; left: 10px; z-index: 10; display: flex; gap: 10px; }
+        .btn { background: rgba(255,255,255,0.2); color: white; border: 1px solid white; padding: 5px 10px; border-radius: 5px; font-size: 12px; }
+        input[type="file"] { display: none; }
+    </style>
+</head>
+<body>
 
-    // 予測用の仮想ボール
-    let ghost = {
-        x: ball.x,
-        y: ball.y,
-        vx: (startX - currentX) * 0.15,
-        vy: (startY - currentY) * 0.15
+<div id="ui">
+    <label class="btn">📷 スクショ選択 <input type="file" id="bgInput" accept="image/*"></label>
+    <div class="btn" id="refCountBtn">反射: 5回</div>
+</div>
+<canvas id="gameCanvas"></canvas>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const bgInput = document.getElementById('bgInput');
+const refCountBtn = document.getElementById('refCountBtn');
+
+let bgImage = null;
+let maxReflections = 5;
+
+// キャラクター（赤い円）
+const ball = { x: 200, y: 400, radius: 20, angle: -Math.PI/4 };
+let isDraggingBall = false;
+let isAdjustingAngle = false;
+
+function resize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resize);
+resize();
+
+// スクショ読み込み処理
+bgInput.onchange = (e) => {
+    const file = e.target.files[0];
+    const reader = new FileReader();
+    reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => { bgImage = img; };
+        img.src = event.target.result;
     };
+    reader.readAsDataURL(file);
+};
 
-    ctx.beginPath();
-    ctx.setLineDash([5, 5]); // 点線にする
-    ctx.moveTo(ghost.x, ghost.y);
+// 反射数切り替え
+refCountBtn.onclick = () => {
+    maxReflections = maxReflections >= 10 ? 1 : maxReflections + 1;
+    refCountBtn.innerText = `反射: ${maxReflections}回`;
+};
 
-    const maxReflections = 5; // 反射回数（ここを増やすと長く伸びる）
-    
-    for (let i = 0; i < maxReflections; i++) {
-        // 次に壁に当たるまでの時間を計算
-        let tx = Infinity, ty = Infinity;
-        
-        if (ghost.vx > 0) tx = (canvas.width - ball.radius - ghost.x) / ghost.vx;
-        else if (ghost.vx < 0) tx = (ball.radius - ghost.x) / ghost.vx;
-        
-        if (ghost.vy > 0) ty = (canvas.height - ball.radius - ghost.y) / ghost.vy;
-        else if (ghost.vy < 0) ty = (ball.radius - ghost.y) / ghost.vy;
+// 操作系
+canvas.addEventListener('touchstart', handleStart);
+canvas.addEventListener('touchmove', handleMove);
+canvas.addEventListener('touchend', () => { isDraggingBall = false; isAdjustingAngle = false; });
 
-        let t = Math.min(tx, ty);
-        
-        // 予測地点へ移動
-        ghost.x += ghost.vx * t;
-        ghost.y += ghost.vy * t;
-        ctx.lineTo(ghost.x, ghost.y);
-
-        // 壁での反射
-        if (tx < ty) ghost.vx *= -1;
-        else ghost.vy *= -1;
+function handleStart(e) {
+    const t = e.touches[0];
+    const dist = Math.hypot(t.clientX - ball.x, t.clientY - ball.y);
+    if (dist < ball.radius * 2) {
+        isDraggingBall = true;
+    } else {
+        isAdjustingAngle = true;
+        updateAngle(t.clientX, t.clientY);
     }
-
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.8)";
-    ctx.stroke();
-    ctx.setLineDash([]); // 点線を戻す
 }
 
-// draw() 関数の中に drawGuide(); を追加してください
+function handleMove(e) {
+    const t = e.touches[0];
+    if (isDraggingBall) {
+        ball.x = t.clientX;
+        ball.y = t.clientY;
+    } else if (isAdjustingAngle) {
+        updateAngle(t.clientX, t.clientY);
+    }
+    e.preventDefault();
+}
+
+function updateAngle(tx, ty) {
+    ball.angle = Math.atan2(ty - ball.y, tx - ball.x);
+}
+
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    drawGuide(); // ← これを追加
-    // ...あとの描画処理はそのまま
-}
+
+    // 1. 背景（スクショ）描画
+    if (bgImage) {
+        const scale = Math.min(canvas.width / bgImage.width, canvas.height / bgImage.height);
+        ctx.drawImage(bgImage, 0, 0, bgImage.width * scale, bgImage.height * scale);
+    }
+
+    //
