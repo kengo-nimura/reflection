@@ -1,0 +1,51 @@
+// --- 予測線（ガイド）を描画する関数 ---
+function drawGuide() {
+    if (!isDragging) return;
+
+    // 予測用の仮想ボール
+    let ghost = {
+        x: ball.x,
+        y: ball.y,
+        vx: (startX - currentX) * 0.15,
+        vy: (startY - currentY) * 0.15
+    };
+
+    ctx.beginPath();
+    ctx.setLineDash([5, 5]); // 点線にする
+    ctx.moveTo(ghost.x, ghost.y);
+
+    const maxReflections = 5; // 反射回数（ここを増やすと長く伸びる）
+    
+    for (let i = 0; i < maxReflections; i++) {
+        // 次に壁に当たるまでの時間を計算
+        let tx = Infinity, ty = Infinity;
+        
+        if (ghost.vx > 0) tx = (canvas.width - ball.radius - ghost.x) / ghost.vx;
+        else if (ghost.vx < 0) tx = (ball.radius - ghost.x) / ghost.vx;
+        
+        if (ghost.vy > 0) ty = (canvas.height - ball.radius - ghost.y) / ghost.vy;
+        else if (ghost.vy < 0) ty = (ball.radius - ghost.y) / ghost.vy;
+
+        let t = Math.min(tx, ty);
+        
+        // 予測地点へ移動
+        ghost.x += ghost.vx * t;
+        ghost.y += ghost.vy * t;
+        ctx.lineTo(ghost.x, ghost.y);
+
+        // 壁での反射
+        if (tx < ty) ghost.vx *= -1;
+        else ghost.vy *= -1;
+    }
+
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.8)";
+    ctx.stroke();
+    ctx.setLineDash([]); // 点線を戻す
+}
+
+// draw() 関数の中に drawGuide(); を追加してください
+function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    drawGuide(); // ← これを追加
+    // ...あとの描画処理はそのまま
+}
