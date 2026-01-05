@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>反射線</title>
+<style>
+  body {
+    margin: 0;
+    background: #000;
+    color: #fff;
+    font-family: sans-serif;
+  }
+  canvas {
+    display: block;
+    margin: 0 auto;
+    background: #111;
+  }
+  #ui {
+    text-align: center;
+    padding: 10px;
+  }
+</style>
+</head>
+<body>
+
+<div id="ui">
+  <input type="file" id="fileInput">
+</div>
+<canvas id="canvas" width="360" height="600"></canvas>
+
+<script>
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+
+let img = new Image();
+
+document.getElementById("fileInput").addEventListener("change", e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  img.src = URL.createObjectURL(file);
+});
+
+img.onload = () => {
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+  drawReflection();
+};
+
+function drawReflection() {
+  ctx.strokeStyle = "red";
+  ctx.lineWidth = 2;
+
+  let x = 50, y = 50;
+  let dx = 3, dy = 4;
+
+  for (let i = 0; i < 10; i++) {
+    let nx = x + dx * 200;
+    let ny = y + dy * 200;
+
+    if (nx < 0 || nx > canvas.width) dx *= -1;
+    if (ny < 0 || ny > canvas.height) dy *= -1;
+
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(nx, ny);
+    ctx.stroke();
+
+    x = nx;
+    y = ny;
+  }
+}
+</script>
+
+</body>
+</html>
